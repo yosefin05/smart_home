@@ -164,7 +164,6 @@
       <div class="sensor-value">Tap Kartu</div>
       <span class="sensor-status standby">Standby</span>
   </div>
-
 </section>
 
 
@@ -173,7 +172,9 @@
     const API = {
       getBmkg: 'api/get_bmkg.php',
       saveBmkg: 'api/save_bmkg.php',
-      getHistory: 'api/get_history.php'
+      getHistory: 'api/get_history.php',
+      getSensor: 'get_sensor.php',
+      controlServo: 'control_servo.php'
     };
   </script>
   <script src="assets/js/main.js"></script>

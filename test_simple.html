@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Servo Simple</title>
+</head>
+<body>
+    <h2>Test Servo Control</h2>
+    
+    <h3>Servo Pintu</h3>
+    <button onclick="controlServo('pintu', 'open')">Buka Pintu</button>
+    <button onclick="controlServo('pintu', 'close')">Tutup Pintu</button>
+    
+    <h3>Servo Jemuran</h3>
+    <button onclick="controlServo('jemuran', 'open')">Buka Jemuran</button>
+    <button onclick="controlServo('jemuran', 'close')">Tutup Jemuran</button>
+    
+    <h3>Status Command</h3>
+    <div id="status">-</div>
+    <button onclick="checkCommand()">Cek Command</button>
+    
+    <script>
+        async function controlServo(servo, action) {
+            try {
+                const res = await fetch(`control_servo.php?servo=${servo}&action=${action}`);
+                const data = await res.json();
+                console.log('Response:', data);
+                alert(`${servo} ${action}: ${data.success ? 'Berhasil' : 'Gagal'}`);
+                checkCommand();
+            } catch (e) {
+                console.error('Error:', e);
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function checkCommand() {
+            try {
+                const res = await fetch('read_servo.php');
+                const command = await res.text();
+                document.getElementById('status').textContent = 'Command: ' + command + ' (pintu,jemuran)';
+            } catch (e) {
+                console.error('Error:', e);
+            }
+        }
+        
+        // Auto refresh status
+        setInterval(checkCommand, 2000);
+        checkCommand();
+    </script>
+</body>
+</html>

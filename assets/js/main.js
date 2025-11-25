@@ -112,6 +112,139 @@ btnSave.addEventListener('click', () => {
   });
 });
 
+// Fungsi untuk mengambil data sensor
+async function fetchSensorData() {
+  try {
+    const res = await fetch(API.getSensor + '?t=' + Date.now()); // Prevent cache
+    const j = await res.json();
+    if (j.success) {
+      updateSensorGrid(j.data);
+      console.log('Data sensor updated:', j.data);
+    }
+  } catch (e) {
+    console.error('Sensor fetch error', e);
+  }
+}
+
+// Fungsi untuk update sensor grid
+function updateSensorGrid(data) {
+  console.log('Raw sensor data:', data);
+  
+  // Update nilai sensor
+  document.getElementById('suhuValue').textContent = (data.suhu ?? '--') + ' °C';
+  document.getElementById('humValue').textContent = (data.kelembapan ?? '--') + ' %';
+  document.getElementById('ldrValue').textContent = (data.cahaya ?? '--') + ' lux';
+  
+  // Update sensor hujan realtime - perbaiki logika
+  const rainValue = parseInt(data.hujan);
+  const isRaining = rainValue === 1;
+  
+  console.log('Rain sensor - Raw:', data.hujan, 'Parsed:', rainValue, 'IsRaining:', isRaining);
+  
+  document.getElementById('rainValue').textContent = isRaining ? 'Basah' : 'Kering';
+  
+  const rainStatus = document.querySelector('#rainValue').nextElementSibling;
+  rainStatus.textContent = isRaining ? 'Hujan Terdeteksi' : 'Tidak Hujan';
+  rainStatus.className = isRaining ? 'sensor-status danger' : 'sensor-status normal';
+  
+  // Update status sensor lainnya berdasarkan nilai
+  updateSensorStatus('suhu', data.suhu);
+  updateSensorStatus('kelembapan', data.kelembapan);
+  updateSensorStatus('cahaya', data.cahaya);
+  
+  // Update servo status
+  updateServoStatus(data);
+}
+
+// Fungsi untuk update status sensor berdasarkan nilai
+function updateSensorStatus(type, value) {
+  let statusElement, statusClass, statusText;
+  
+  if (type === 'suhu') {
+    statusElement = document.querySelector('#suhuValue').nextElementSibling;
+    if (value < 20) { statusClass = 'sensor-status warning'; statusText = 'Dingin'; }
+    else if (value > 35) { statusClass = 'sensor-status danger'; statusText = 'Panas'; }
+    else { statusClass = 'sensor-status normal'; statusText = 'Normal'; }
+  } else if (type === 'kelembapan') {
+    statusElement = document.querySelector('#humValue').nextElementSibling;
+    if (value < 30) { statusClass = 'sensor-status warning'; statusText = 'Kering'; }
+    else if (value > 80) { statusClass = 'sensor-status danger'; statusText = 'Lembap'; }
+    else { statusClass = 'sensor-status normal'; statusText = 'Normal'; }
+  } else if (type === 'cahaya') {
+    statusElement = document.querySelector('#ldrValue').nextElementSibling;
+    if (value < 100) { statusClass = 'sensor-status warning'; statusText = 'Gelap'; }
+    else if (value > 800) { statusClass = 'sensor-status normal'; statusText = 'Terang'; }
+    else { statusClass = 'sensor-status normal'; statusText = 'Normal'; }
+  }
+  
+  if (statusElement) {
+    statusElement.className = statusClass;
+    statusElement.textContent = statusText;
+  }
+}
+
+// Fungsi untuk update status servo
+function updateServoStatus(data) {
+  const servoCards = document.querySelectorAll('.servo-card');
+  
+  // Update status pintu
+  const statusPintu = data.status_pintu === 'TERBUKA' ? 'Terbuka' : 'Tertutup';
+  servoCards[0].querySelector('.status-value').textContent = statusPintu;
+  
+  // Update status jemuran  
+  const statusJemuran = data.status_jemuran === 'TERBUKA' ? 'Terbuka' : 'Tertutup';
+  servoCards[1].querySelector('.status-value').textContent = statusJemuran;
+  
+  console.log('Status update:', { pintu: statusPintu, jemuran: statusJemuran });
+}
+
+// Fungsi kontrol servo
+async function controlServo(servo, action) {
+  try {
+    console.log(`Mengirim perintah: ${servo} ${action}`);
+    const res = await fetch(`${API.controlServo}?servo=${servo}&action=${action}`);
+    const j = await res.json();
+    console.log('Response servo control:', j);
+    if (j.success) {
+      console.log(`Berhasil ${action} ${servo}`);
+      setTimeout(() => fetchSensorData(), 500); // Delay refresh
+    } else {
+      console.error('Servo control failed:', j.error);
+    }
+  } catch (e) {
+    console.error('Servo control error', e);
+  }
+}
+
+// Event listeners untuk tombol servo
+document.addEventListener('DOMContentLoaded', () => {
+  const servoCards = document.querySelectorAll('.servo-card');
+  
+  servoCards.forEach((card, index) => {
+    const servo = index === 0 ? 'pintu' : 'jemuran';
+    const buttons = card.querySelectorAll('.btn-control');
+    
+    buttons[0].onclick = () => {
+      console.log(`Membuka ${servo}`);
+      controlServo(servo, 'open');
+    };
+    buttons[2].onclick = () => {
+      console.log(`Menutup ${servo}`);
+      controlServo(servo, 'close');
+    };
+  });
+});
+
 // initial load
 refreshAll(false);
-setInterval(() => refreshAll(false), 10 * 60 * 1000); // auto refresh every 10 minutes
+fetchSensorData();
+
+// Realtime update yang lebih agresif untuk servo status
+setInterval(() => {
+  fetchSensorData(); // Update sensor + servo setiap 1 detik
+}, 1000);
+
+// BMKG update lebih jarang
+setInterval(() => {
+  refreshAll(false);
+}, 300000); // 5 menit
