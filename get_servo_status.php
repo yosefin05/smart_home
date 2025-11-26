@@ -1,5 +1,5 @@
 <?php
-// get_servo_command.php - Format sesuai ESP32 code (pintu,jemuran)
+// get_servo_status.php - Format yang sesuai dengan ESP32 code
 header("Content-Type: text/plain; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
 
@@ -15,21 +15,20 @@ try {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )");
     
-    // Get servo status
+    // Get or create servo status
     $stmt = $pdo->query("SELECT * FROM servo_control ORDER BY id DESC LIMIT 1");
     $servo = $stmt->fetch();
     
     if (!$servo) {
-        // Insert default and return
+        // Insert default values
         $pdo->exec("INSERT INTO servo_control (servo_pintu, servo_jemuran) VALUES (0, 0)");
         echo "0,0";
     } else {
-        // Return format yang ESP32 harapkan: pintu,jemuran
+        // Return format: pintu,jemuran (sesuai ESP32 code)
         echo $servo['servo_pintu'] . "," . $servo['servo_jemuran'];
     }
     
 } catch(PDOException $e) {
-    // Default jika error
-    echo "0,0";
+    echo "0,0"; // Default jika error
 }
 ?>
